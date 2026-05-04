@@ -9,7 +9,7 @@ from datetime import datetime
 from config import HUMAN_IN_THE_LOOP
 
 _DIVIDER = "─" * 60
-_MD_DIR = os.path.join(os.path.dirname(__file__), "outputs")
+_MD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "outputs")
 
 
 def _save_to_md(

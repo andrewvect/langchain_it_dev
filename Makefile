@@ -1,7 +1,7 @@
 .PHONY: help run new resume auto clean-db clean-outputs clean logs lint fmt typecheck test
 
 PYTHON := python3
-MAIN   := main.py
+MAIN   := src/main.py
 DB     := it_team.db
 VENV   := .venv/bin
 
@@ -50,7 +50,7 @@ endif
 
 logs:
 	@$(PYTHON) -c "\
-import sys; sys.path.insert(0, '.'); \
+import sys; sys.path.insert(0, 'src'); \
 from database import init_db, get_conn; init_db(); \
 from config import DB_PATH; \
 import sqlite3, json; \

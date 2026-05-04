@@ -21,6 +21,7 @@ def developer(state: TeamState) -> dict:
         "Follow the architecture strictly. Include docstrings and inline comments. "
         "Respond in the same language as the user."
     )
+    project_dir = state.get("project_dir")
     code = _call_copilot(
         system=dev_system,
         human=(
@@ -30,6 +31,7 @@ def developer(state: TeamState) -> dict:
         ),
         agent_name="Developer",
         model=_COPILOT_CODE_MODEL,
+        cwd=project_dir,
     )
 
     feedback = human_checkpoint(
@@ -49,6 +51,7 @@ def developer(state: TeamState) -> dict:
             ),
             agent_name="Developer",
             model=_COPILOT_CODE_MODEL,
+            cwd=project_dir,
         )
 
     notes = _call_copilot(
@@ -56,13 +59,17 @@ def developer(state: TeamState) -> dict:
         human=f"Code you wrote:\n{code}",
         agent_name="Developer (notes)",
         model=_COPILOT_FAST_MODEL,
+        cwd=project_dir,
     )
 
     update = {"code": code, "developer_notes": notes}
     _save_code_to_project(state["task_id"], code, state.get("project_dir"))
-    _save_to_md(state["task_id"], "Developer", "code", code, state.get("project_dir"))
-    _save_to_md(state["task_id"], "Developer", "developer_notes", notes, state.get("project_dir"))
+    _save_to_md(state["task_id"], "Developer", "code",
+                code, state.get("project_dir"))
+    _save_to_md(state["task_id"], "Developer",
+                "developer_notes", notes, state.get("project_dir"))
     diff_and_log(
-        state["task_id"], "Developer", state.get("review_iteration", 0), old, {**old, **update}
+        state["task_id"], "Developer", state.get(
+            "review_iteration", 0), old, {**old, **update}
     )
     return update

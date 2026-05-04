@@ -1,6 +1,6 @@
 """TeamLead agent: decompose user request and summarize final output."""
 
-from llm.copilot import _COPILOT_FAST_MODEL, _call, _call_copilot
+from llm.copilot import _COPILOT_FAST_MODEL, call, _call_copilot
 from utils import _save_to_md, human_checkpoint
 from database import diff_and_log
 from state import TeamState
@@ -16,24 +16,28 @@ def teamlead_decompose(state: TeamState) -> dict:
         "Be concise and unambiguous. Respond in the same language as the user."
     )
 
-    brief = _call(
-        system=system, human=f"User task:\n{state['user_request']}", agent_name="TeamLead"
+    project_dir = state.get("project_dir")
+    brief = call(
+        system=system, human=f"User task:\n{state['user_request']}",
+        agent_name="TeamLead", cwd=project_dir,
     )
 
     feedback = human_checkpoint("TeamLead", "task_brief", brief)
     if feedback != brief:
-        brief = _call(
+        brief = call(
             system=system,
             human=(
                 f"User task:\n{state['user_request']}\n\n"
                 f"Previous brief was rejected. Human corrections:\n{feedback}"
             ),
             agent_name="TeamLead",
+            cwd=project_dir,
         )
 
     update = {"user_request": brief, "review_iteration": 0}
     diff_and_log(state["task_id"], "TeamLead", 0, old, {**old, **update})
-    _save_to_md(state["task_id"], "TeamLead", "task_brief", brief, state.get("project_dir"))
+    _save_to_md(state["task_id"], "TeamLead", "task_brief",
+                brief, state.get("project_dir"))
     return update
 
 
@@ -60,11 +64,14 @@ def teamlead_summarize(state: TeamState) -> dict:
         ),
         agent_name="TeamLead (summary)",
         model=_COPILOT_FAST_MODEL,
+        cwd=state.get("project_dir"),
     )
 
     update = {"final_summary": summary}
     diff_and_log(
-        state["task_id"], "TeamLead", state.get("review_iteration", 0), old, {**old, **update}
+        state["task_id"], "TeamLead", state.get(
+            "review_iteration", 0), old, {**old, **update}
     )
-    _save_to_md(state["task_id"], "TeamLead", "final_summary", summary, state.get("project_dir"))
+    _save_to_md(state["task_id"], "TeamLead", "final_summary",
+                summary, state.get("project_dir"))
     return update

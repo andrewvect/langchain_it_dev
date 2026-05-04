@@ -20,9 +20,11 @@ def reviewer(state: TeamState) -> dict:
             "If it needs fixes respond with exactly: REWORK\n<list of required changes>\n"
             "Respond in the same language as the user."
         ),
-        human=(f"Architecture:\n{state.get('architecture', '')}\n\nCode:\n{state.get('code', '')}"),
+        human=(
+            f"Architecture:\n{state.get('architecture', '')}\n\nCode:\n{state.get('code', '')}"),
         agent_name="Reviewer",
         model=_COPILOT_CODE_MODEL,
+        cwd=state.get("project_dir"),
     )
 
     first_line = review.splitlines()[0].strip().upper()
@@ -54,7 +56,8 @@ def reviewer(state: TeamState) -> dict:
         "review_comments": comments,
         "review_iteration": iteration + 1,
     }
-    diff_and_log(state["task_id"], "Reviewer", iteration, old, {**old, **update})
+    diff_and_log(state["task_id"], "Reviewer",
+                 iteration, old, {**old, **update})
     _save_to_md(
         state["task_id"],
         "Reviewer",

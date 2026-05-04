@@ -16,11 +16,13 @@ def qa_engineer(state: TeamState) -> dict:
         "edge cases and error handling. Tests will guide the developer. "
         "Respond in the same language as the user."
     )
+    project_dir = state.get("project_dir")
     tests = _call_copilot(
         system=qa_system,
         human=f"Architecture:\n{state.get('architecture', '')}",
         agent_name="QA",
         model=_COPILOT_FAST_MODEL,
+        cwd=project_dir,
     )
 
     feedback = human_checkpoint("QA", "test_cases", tests)
@@ -33,9 +35,12 @@ def qa_engineer(state: TeamState) -> dict:
             ),
             agent_name="QA",
             model=_COPILOT_FAST_MODEL,
+            cwd=project_dir,
         )
 
     update = {"test_cases": tests}
-    diff_and_log(state["task_id"], "QA", state.get("review_iteration", 0), old, {**old, **update})
-    _save_to_md(state["task_id"], "QA", "test_cases", tests, state.get("project_dir"))
+    diff_and_log(state["task_id"], "QA", state.get(
+        "review_iteration", 0), old, {**old, **update})
+    _save_to_md(state["task_id"], "QA", "test_cases",
+                tests, state.get("project_dir"))
     return update

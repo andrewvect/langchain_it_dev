@@ -19,7 +19,8 @@ def _jira_request(method: str, url: str, cfg: dict[str, str], **kwargs: Any) -> 
         method,
         url,
         auth=(cfg["email"], cfg["api_token"]),
-        headers={"Accept": "application/json", "Content-Type": "application/json"},
+        headers={"Accept": "application/json",
+                 "Content-Type": "application/json"},
         timeout=30,
         **kwargs,
     )
@@ -48,7 +49,8 @@ def _get_or_create_project(cfg: dict, project_key: str, project_name: str) -> st
         "projectTemplateKey": "com.pyxis.greenhopper.jira:gh-scrum-template",
         "leadAccountId": account_id,
     }
-    resp = _jira_request("POST", f"{base}/rest/api/3/project", cfg, json=payload).json()
+    resp = _jira_request(
+        "POST", f"{base}/rest/api/3/project", cfg, json=payload).json()
     key: str = resp.get("key", project_key)
     print(f"  ✅ [Jira] Created project: {key}", flush=True)
     return key
@@ -74,13 +76,15 @@ def _create_issue(
             "type": "doc",
             "version": 1,
             "content": [
-                {"type": "paragraph", "content": [{"type": "text", "text": description[:10000]}]}
+                {"type": "paragraph", "content": [
+                    {"type": "text", "text": description[:10000]}]}
             ],
         }
     if parent_key:
         fields["parent"] = {"key": parent_key}
 
-    resp = _jira_request("POST", f"{base}/rest/api/3/issue", cfg, json={"fields": fields}).json()
+    resp = _jira_request(
+        "POST", f"{base}/rest/api/3/issue", cfg, json={"fields": fields}).json()
     key: str = resp.get("key", "")
     print(f"    ✅ [Jira] {issue_type}: {key} — {summary[:60]}", flush=True)
     return key
@@ -115,6 +119,7 @@ def jira_setup(state: TeamState) -> dict:
         ),
         agent_name="Jira decomposer",
         model=_COPILOT_FAST_MODEL,
+        cwd=state.get("project_dir"),
     )
 
     tickets_raw = re.sub(r"^```(?:json)?\s*", "", tickets_raw.strip())
@@ -136,7 +141,8 @@ def jira_setup(state: TeamState) -> dict:
                 ],
             }
         ]
-        print("  ⚠️  [Jira] LLM returned invalid JSON — using fallback tickets", flush=True)
+        print(
+            "  ⚠️  [Jira] LLM returned invalid JSON — using fallback tickets", flush=True)
 
     # ── Step 2: Derive a short project key from the task ──────────────────
     raw_request = state.get("user_request", "TASK")
@@ -188,7 +194,8 @@ def jira_setup(state: TeamState) -> dict:
                     print(f"  ❌ [Jira] Task creation failed: {e2}", flush=True)
 
     jira_result = "\n".join(created_lines)
-    _save_to_md(state["task_id"], "Jira", "setup", jira_result, state.get("project_dir"))
+    _save_to_md(state["task_id"], "Jira", "setup",
+                jira_result, state.get("project_dir"))
     diff_and_log(
         state["task_id"],
         "Jira",

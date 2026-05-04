@@ -16,6 +16,7 @@ def devops(state: TeamState) -> dict:
         "Add health checks and best practices. "
         "Respond in the same language as the user."
     )
+    project_dir = state.get("project_dir")
     config = _call_copilot(
         system=devops_system,
         human=(
@@ -24,6 +25,7 @@ def devops(state: TeamState) -> dict:
         ),
         agent_name="DevOps",
         model=_COPILOT_FAST_MODEL,
+        cwd=project_dir,
     )
 
     feedback = human_checkpoint("DevOps", "devops_config", config)
@@ -37,11 +39,14 @@ def devops(state: TeamState) -> dict:
             ),
             agent_name="DevOps",
             model=_COPILOT_FAST_MODEL,
+            cwd=project_dir,
         )
 
     update = {"devops_config": config}
     diff_and_log(
-        state["task_id"], "DevOps", state.get("review_iteration", 0), old, {**old, **update}
+        state["task_id"], "DevOps", state.get(
+            "review_iteration", 0), old, {**old, **update}
     )
-    _save_to_md(state["task_id"], "DevOps", "devops_config", config, state.get("project_dir"))
+    _save_to_md(state["task_id"], "DevOps", "devops_config",
+                config, state.get("project_dir"))
     return update

@@ -19,7 +19,7 @@ AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "3000"))
 DB_PATH = os.environ.get("DB_PATH", "it_team.db")
 
 # ─── Secrets ──────────────────────────────────────────────────────────────────
-_SECRETS_PATH = Path("~/.agent_keys/secrets.json")
+_SECRETS_PATH = Path(os.environ.get("SECRETS_PATH", str(Path.home() / ".agent_keys" / "secrets.json")))
 
 
 def load_secrets() -> dict[str, Any]:

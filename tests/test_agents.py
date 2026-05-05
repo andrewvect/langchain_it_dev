@@ -36,7 +36,7 @@ def test_teamlead_decompose_returns_user_request(tmp_path):
     from agents.teamlead import teamlead_decompose
 
     state = _base_state(tmp_path)
-    with patch("agents.teamlead._call", return_value="structured brief"):
+    with patch("agents.teamlead.call", return_value="structured brief"):
         with patch("agents.teamlead.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
             result = teamlead_decompose(state)
 
@@ -49,7 +49,7 @@ def test_teamlead_decompose_reruns_on_human_feedback(tmp_path):
 
     state = _base_state(tmp_path)
     call_returns = iter(["first brief", "revised brief"])
-    with patch("agents.teamlead._call", side_effect=call_returns):
+    with patch("agents.teamlead.call", side_effect=call_returns):
         with patch("agents.teamlead.human_checkpoint", return_value="please revise"):
             result = teamlead_decompose(state)
 
@@ -63,24 +63,24 @@ def test_architect_returns_architecture(tmp_path):
     from agents.architect import architect
 
     state = _base_state(tmp_path)
-    with patch("agents.architect._call", return_value="design doc"):
+    with patch("agents.architect.call", return_value="design doc"):
         with patch("agents.architect.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
             result = architect(state)
 
     assert result["architecture"] == "design doc"
 
 
-# ─── qa_engineer ──────────────────────────────────────────────────────────────
+# ─── qa_test_design ───────────────────────────────────────────────────────────
 
 
-def test_qa_engineer_returns_test_cases(tmp_path):
-    from agents.qa import qa_engineer
+def test_qa_test_design_returns_test_cases(tmp_path):
+    from agents.qa import qa_test_design
 
     state = _base_state(tmp_path)
     state["architecture"] = "REST API design"
     with patch("agents.qa._call_copilot", return_value="def test_login(): ..."):
         with patch("agents.qa.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
-            result = qa_engineer(state)
+            result = qa_test_design(state)
 
     assert "test_login" in result["test_cases"]
 
@@ -153,6 +153,83 @@ def test_reviewer_auto_approves_at_max_iterations(tmp_path):
 
     assert result["review_result"] == "approved"
     assert "Auto-approved" in result["review_comments"]
+
+
+# ─── qa_validation ────────────────────────────────────────────────────────────
+
+
+def test_qa_validation_pass(tmp_path):
+    from agents.qa_validation import qa_validation
+
+    state = _base_state(tmp_path)
+    state["code"] = "def app(): pass"
+    state["test_cases"] = "def test_app(): ..."
+
+    with patch("agents.qa_validation._call_copilot", return_value="PASS\nAll tests pass"):
+        with patch("agents.qa_validation.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
+            result = qa_validation(state)
+
+    assert result["qa_validation_result"] == "pass"
+
+
+def test_qa_validation_fail(tmp_path):
+    from agents.qa_validation import qa_validation
+
+    state = _base_state(tmp_path)
+    state["code"] = "def app(): raise NotImplementedError"
+    state["test_cases"] = "def test_app(): ..."
+
+    with patch("agents.qa_validation._call_copilot", return_value="FAIL\ntest_app fails"):
+        with patch("agents.qa_validation.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
+            result = qa_validation(state)
+
+    assert result["qa_validation_result"] == "fail"
+    assert "test_app" in result["qa_validation_comments"]
+
+
+# ─── ci_validator ─────────────────────────────────────────────────────────────
+
+
+def test_ci_validator_pass(tmp_path):
+    from agents.ci_validator import ci_validator
+
+    state = _base_state(tmp_path)
+    state["code"] = "def app(): pass"
+
+    with patch("agents.ci_validator._call_copilot", return_value="PASS\nAll checks green"):
+        with patch("agents.ci_validator.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
+            result = ci_validator(state)
+
+    assert result["ci_result"] == "pass"
+    assert result["ci_fail_type"] == ""
+
+
+def test_ci_validator_fail_tests(tmp_path):
+    from agents.ci_validator import ci_validator
+
+    state = _base_state(tmp_path)
+    state["code"] = "def app(): pass"
+
+    with patch("agents.ci_validator._call_copilot", return_value="FAIL_TESTS\ntest_x failed"):
+        with patch("agents.ci_validator.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
+            result = ci_validator(state)
+
+    assert result["ci_result"] == "fail"
+    assert result["ci_fail_type"] == "tests"
+
+
+def test_ci_validator_fail_lint(tmp_path):
+    from agents.ci_validator import ci_validator
+
+    state = _base_state(tmp_path)
+    state["code"] = "def app(): pass"
+
+    with patch("agents.ci_validator._call_copilot", return_value="FAIL_LINT_BUILD\nE501 line too long"):
+        with patch("agents.ci_validator.human_checkpoint", side_effect=lambda *a, **kw: a[2]):
+            result = ci_validator(state)
+
+    assert result["ci_result"] == "fail"
+    assert result["ci_fail_type"] == "lint_build"
 
 
 # ─── devops ───────────────────────────────────────────────────────────────────

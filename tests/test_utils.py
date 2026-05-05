@@ -12,8 +12,14 @@ from utils import _save_code_to_project, _save_to_md, human_checkpoint
 
 
 def test_save_to_md_creates_file(tmp_path):
-    _save_to_md(1, "Architect", "architecture", "# Design", project_dir=str(tmp_path))
-    md = tmp_path / "task_1.md"
+    project_dir = str(tmp_path / "myproject")
+    os.makedirs(project_dir)
+    import utils as utils_module
+    import unittest.mock as mock
+    with mock.patch.object(utils_module, "_MD_DIR", str(tmp_path / "outputs")):
+        _save_to_md(1, "Architect", "architecture",
+                    "# Design", project_dir=project_dir)
+    md = tmp_path / "outputs" / "myproject" / "architect.md"
     assert md.exists()
     content = md.read_text()
     assert "Architect" in content
@@ -22,9 +28,14 @@ def test_save_to_md_creates_file(tmp_path):
 
 
 def test_save_to_md_appends_on_multiple_calls(tmp_path):
-    _save_to_md(1, "A", "f1", "first", project_dir=str(tmp_path))
-    _save_to_md(1, "B", "f2", "second", project_dir=str(tmp_path))
-    content = (tmp_path / "task_1.md").read_text()
+    project_dir = str(tmp_path / "myproject")
+    os.makedirs(project_dir)
+    import utils as utils_module
+    import unittest.mock as mock
+    with mock.patch.object(utils_module, "_MD_DIR", str(tmp_path / "outputs")):
+        _save_to_md(1, "A", "f1", "first", project_dir=project_dir)
+        _save_to_md(1, "A", "f2", "second", project_dir=project_dir)
+    content = (tmp_path / "outputs" / "myproject" / "a.md").read_text()
     assert "first" in content
     assert "second" in content
 
@@ -34,7 +45,7 @@ def test_save_to_md_uses_fallback_outputs_dir(tmp_path, monkeypatch):
 
     monkeypatch.setattr(utils_module, "_MD_DIR", str(tmp_path))
     _save_to_md(2, "QA", "tests", "test content")
-    assert (tmp_path / "task_2.md").exists()
+    assert (tmp_path / "task_2" / "qa.md").exists()
 
 
 # ─── _save_code_to_project ────────────────────────────────────────────────────

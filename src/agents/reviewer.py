@@ -1,7 +1,10 @@
-"""Reviewer agent: code review with APPROVED/REWORK decision."""
+"""Reviewer agent: code review with APPROVED/REWORK decision.
 
-from llm.copilot import _COPILOT_CODE_MODEL, _call_copilot
-from utils import _save_to_md, human_checkpoint
+Does NOT create files — outputs review decision and comments stored in state only.
+"""
+
+from llm.copilot import _COPILOT_SMART_MODEL, call_copilot
+from utils import _save_to_md, human_checkpoint, parse_json_response
 from config import MAX_REVIEW_ITERATIONS
 from database import diff_and_log
 from state import TeamState
@@ -11,25 +14,33 @@ def reviewer(state: TeamState) -> dict:
     old = dict(state)
     iteration = state.get("review_iteration", 0)
 
-    review = _call_copilot(
+    review_raw = call_copilot(
         system=(
             "You are a strict Senior Code Reviewer. "
             "Check the code for: correctness, security (OWASP), code style, performance, "
             "adherence to the architecture. "
-            "If the code is acceptable respond with exactly: APPROVED\n<your comments>\n"
-            "If it needs fixes respond with exactly: REWORK\n<list of required changes>\n"
-            "Respond in the same language as the user."
+            "Respond ONLY with valid JSON — no markdown, no extra text. "
+            'Schema: {"decision": "approved" | "rework", "comments": "<your feedback>"} '
+            "Respond in the same language as the user. "
+            "Do NOT create, modify, or delete any files."
         ),
         human=(
             f"Architecture:\n{state.get('architecture', '')}\n\nCode:\n{state.get('code', '')}"),
         agent_name="Reviewer",
-        model=_COPILOT_CODE_MODEL,
+        model=_COPILOT_SMART_MODEL,
         cwd=state.get("project_dir"),
     )
 
-    first_line = review.splitlines()[0].strip().upper()
-    result = "approved" if "APPROVED" in first_line else "rework"
-    comments = "\n".join(review.splitlines()[1:]).strip()
+    parsed = parse_json_response(review_raw)
+    if parsed and "decision" in parsed:
+        result = parsed["decision"].lower().strip()
+        result = "approved" if result == "approved" else "rework"
+        comments = str(parsed.get("comments", ""))
+    else:
+        # Fallback: legacy text parsing
+        first_line = review_raw.splitlines()[0].strip().upper()
+        result = "approved" if "APPROVED" in first_line else "rework"
+        comments = "\n".join(review_raw.splitlines()[1:]).strip()
 
     if result == "rework" and iteration >= MAX_REVIEW_ITERATIONS - 1:
         result = "approved"
@@ -64,5 +75,9 @@ def reviewer(state: TeamState) -> dict:
         f"review_{iteration + 1} ({result.upper()})",
         comments,
         state.get("project_dir"),
+        input_content=(
+            f"Architecture:\n{state.get('architecture', '')}\n\n"
+            f"Code:\n{state.get('code', '')}"
+        ),
     )
     return update

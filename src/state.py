@@ -13,6 +13,9 @@ class TeamState(TypedDict, total=False):
     # target project folder (selected at startup)
     project_dir: str
 
+    # ── Product Manager ────────────────────────────────────────────────────
+    product_brief: str  # PRD produced by product manager
+
     # ── Architect ──────────────────────────────────────────────────────────
     architecture: str  # system design doc
 
@@ -25,8 +28,17 @@ class TeamState(TypedDict, total=False):
     review_comments: str  # reviewer feedback
     review_iteration: int  # current iteration counter (0-based)
 
-    # ── QA ─────────────────────────────────────────────────────────────────
+    # ── QA Test Design ─────────────────────────────────────────────────────
     test_cases: str  # test cases / unit tests
+
+    # ── QA Validation ──────────────────────────────────────────────────────
+    qa_validation_result: str    # "pass" | "fail"
+    qa_validation_comments: str  # QA validation feedback
+
+    # ── CI Validator ───────────────────────────────────────────────────────
+    ci_result: str      # "pass" | "fail"
+    ci_fail_type: str   # "tests" | "lint_build" | ""
+    ci_comments: str    # CI pipeline feedback
 
     # ── DevOps ─────────────────────────────────────────────────────────────
     devops_config: str  # Dockerfile, CI/CD config

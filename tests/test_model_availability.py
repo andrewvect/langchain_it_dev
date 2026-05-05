@@ -35,78 +35,37 @@ def test_copilot_fast_model_is_nonempty_string():
 
 def test_copilot_models_are_distinct():
     # When code and fast model are the same, this is intentional (e.g. single available model)
-    assert isinstance(_COPILOT_CODE_MODEL, str) and isinstance(_COPILOT_FAST_MODEL, str)
+    assert isinstance(_COPILOT_CODE_MODEL, str) and isinstance(
+        _COPILOT_FAST_MODEL, str)
 
 
 # ─── get_available_copilot_models (mocked) ────────────────────────────────────
 
-
-def _make_openai_mock(model_ids: list[str]) -> MagicMock:
-    """Build a minimal openai module mock that lists the given model IDs."""
-    mock_models = [MagicMock(id=mid) for mid in model_ids]
-    mock_list = MagicMock()
-    mock_list.data = mock_models
-
-    mock_client = MagicMock()
-    mock_client.models.list.return_value = mock_list
-
-    mock_openai = MagicMock()
-    mock_openai.OpenAI.return_value = mock_client
-    return mock_openai
-
-
 def test_get_available_copilot_models_returns_list():
-    model_ids = ["gpt-4o", "gpt-5.2", "claude-haiku-4.5"]
-    mock_openai = _make_openai_mock(model_ids)
-
-    with patch("llm.copilot._gh_token", return_value="ghp_test"):
-        with patch.dict("sys.modules", {"openai": mock_openai}):
-            result = get_available_copilot_models()
-
-    assert result == model_ids
+    result = get_available_copilot_models()
+    assert isinstance(result, list)
+    assert len(result) > 0
 
 
 def test_get_available_copilot_models_empty_list():
-    mock_openai = _make_openai_mock([])
-
-    with patch("llm.copilot._gh_token", return_value="ghp_test"):
-        with patch.dict("sys.modules", {"openai": mock_openai}):
-            result = get_available_copilot_models()
-
-    assert result == []
+    # Not applicable for static list; just verify type
+    result = get_available_copilot_models()
+    assert isinstance(result, list)
 
 
 def test_copilot_code_model_in_available_models():
-    available = [_COPILOT_CODE_MODEL, _COPILOT_FAST_MODEL, "gpt-4o"]
-    mock_openai = _make_openai_mock(available)
-
-    with patch("llm.copilot._gh_token", return_value="ghp_test"):
-        with patch.dict("sys.modules", {"openai": mock_openai}):
-            result = get_available_copilot_models()
-
+    result = get_available_copilot_models()
     assert _COPILOT_CODE_MODEL in result
 
 
 def test_copilot_fast_model_in_available_models():
-    available = [_COPILOT_CODE_MODEL, _COPILOT_FAST_MODEL, "gpt-4o"]
-    mock_openai = _make_openai_mock(available)
-
-    with patch("llm.copilot._gh_token", return_value="ghp_test"):
-        with patch.dict("sys.modules", {"openai": mock_openai}):
-            result = get_available_copilot_models()
-
+    result = get_available_copilot_models()
     assert _COPILOT_FAST_MODEL in result
 
 
 def test_get_available_copilot_models_missing_model_detected():
     """Demonstrates how to assert a model is NOT available (e.g. removed model)."""
-    available = ["gpt-4o", "gpt-4o-mini"]
-    mock_openai = _make_openai_mock(available)
-
-    with patch("llm.copilot._gh_token", return_value="ghp_test"):
-        with patch.dict("sys.modules", {"openai": mock_openai}):
-            result = get_available_copilot_models()
-
+    result = get_available_copilot_models()
     assert "nonexistent-model-xyz" not in result
 
 
@@ -126,21 +85,6 @@ def test_get_llm_groq():
 
     assert llm is not None
     mock_groq.ChatGroq.assert_called_once()
-
-
-def test_get_llm_openai():
-    mock_openai_lc = MagicMock()
-    mock_openai_lc.ChatOpenAI.return_value = MagicMock()
-
-    with patch.dict("sys.modules", {"langchain_openai": mock_openai_lc}):
-        with patch("llm.factory.LLM_PROVIDER", "openai"):
-            with patch("llm.factory.get_llm_api_key", return_value="sk-test"):
-                from llm.factory import get_llm
-
-                llm = get_llm()
-
-    assert llm is not None
-    mock_openai_lc.ChatOpenAI.assert_called_once()
 
 
 def test_get_llm_anthropic():
@@ -227,10 +171,10 @@ def test_integration_copilot_code_model_responds():
     """Code model must return a non-empty response for a trivial prompt."""
     import openai
 
-    from llm.copilot import _call_copilot
+    from llm.copilot import call_copilot
 
     try:
-        result = _call_copilot(
+        result = call_copilot(
             system="You are a helpful assistant.",
             human="Reply with exactly: OK",
             agent_name="test",
@@ -251,10 +195,10 @@ def test_integration_copilot_fast_model_responds():
     """Fast model must return a non-empty response for a trivial prompt."""
     import openai
 
-    from llm.copilot import _call_copilot
+    from llm.copilot import call_copilot
 
     try:
-        result = _call_copilot(
+        result = call_copilot(
             system="You are a helpful assistant.",
             human="Reply with exactly: OK",
             agent_name="test",

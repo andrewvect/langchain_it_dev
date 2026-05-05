@@ -12,7 +12,6 @@ import config
 def _make_secrets(overrides: dict | None = None) -> dict:
     base = {
         "groq": {"api_key": "gsk_test"},
-        "openai": "sk-openai-test",
         "anthropic": "sk-ant-test",
         "jira": {
             "base_url": "https://example.atlassian.net",
@@ -59,7 +58,6 @@ def test_get_jira_config_missing_section(tmp_path: Path):
     "provider,expected_key",
     [
         ("groq", "gsk_test"),
-        ("openai", "sk-openai-test"),
         ("anthropic", "sk-ant-test"),
     ],
 )

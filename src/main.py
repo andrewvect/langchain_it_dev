@@ -3,16 +3,21 @@ Entry point.
 
 Usage:
     python main.py "Create a REST API for user authentication with JWT"
-    python main.py --new          # ignore incomplete run, ask for new prompt
-    python main.py --new "task"   # same but with inline task
+    python main.py --new                          # ignore incomplete run, ask for new prompt
+    python main.py --new "task"                   # same but with inline task
     python main.py --project-dir /path/to/project "task"
+    python main.py --new --task-file task.txt     # read task from file
+    python main.py --new --task-editor            # open $EDITOR to write task
 
 If there is an incomplete (in_progress / failed / interrupted) task in the DB,
 the script will offer to resume it from the last completed step.
 """
 
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 from typing import Any
 
 from database import (
@@ -25,6 +30,53 @@ from database import (
     restore_state_from_log,
 )
 from graph import team_checkpointer, team_graph
+
+
+
+_CLAUDE_SETTINGS_SRC = "/Users/andrey/vscode_projects/hh_ru/.claude/settings.local.json"
+
+
+def _inject_claude_settings(project_dir: str) -> None:
+    """Copy .claude/settings.local.json into the project folder."""
+    if not os.path.isfile(_CLAUDE_SETTINGS_SRC):
+        print(f"   ⚠️  Claude settings not found: {_CLAUDE_SETTINGS_SRC}")
+        return
+    dest_dir = os.path.join(project_dir, ".claude")
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, "settings.local.json")
+    shutil.copy2(_CLAUDE_SETTINGS_SRC, dest)
+    print(f"   📋 Copied .claude/settings.local.json → {dest}")
+
+
+def _task_from_file(path: str) -> str:
+    """Read task text from a file."""
+    try:
+        with open(os.path.expanduser(path), encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError as e:
+        print(f"❌ Cannot read task file: {e}")
+        sys.exit(1)
+
+
+def _task_from_editor() -> str:
+    """Open $EDITOR (fallback: nano) for the user to type the task."""
+    editor = os.environ.get("EDITOR") or os.environ.get("VISUAL") or "nano"
+    with tempfile.NamedTemporaryFile(
+        suffix=".txt", mode="w", encoding="utf-8", delete=False
+    ) as tf:
+        tf.write("# Напиши задачу ниже (эта строка будет удалена)\n\n")
+        tmp_path = tf.name
+    try:
+        subprocess.call([editor, tmp_path])
+        with open(tmp_path, encoding="utf-8") as f:
+            lines = [l for l in f.readlines() if not l.startswith("#")]
+        task = "".join(lines).strip()
+        if not task:
+            print("❌ Задача пустая — выход.")
+            sys.exit(1)
+        return task
+    finally:
+        os.unlink(tmp_path)
 
 
 def _ask_project_dir() -> str:
@@ -154,6 +206,22 @@ if __name__ == "__main__":
             print("Error: --project-dir requires a path argument.")
             sys.exit(1)
 
+    # Parse --task-file /path
+    cli_task_file: str | None = None
+    if "--task-file" in args:
+        idx = args.index("--task-file")
+        if idx + 1 < len(args):
+            cli_task_file = args[idx + 1]
+            args = args[:idx] + args[idx + 2:]
+        else:
+            print("Error: --task-file requires a path argument.")
+            sys.exit(1)
+
+    # Parse --task-editor
+    use_task_editor = "--task-editor" in args
+    if use_task_editor:
+        args = [a for a in args if a != "--task-editor"]
+
     init_db()
 
     if force_new:
@@ -176,13 +244,19 @@ if __name__ == "__main__":
 
     # Resolve project folder (CLI flag overrides interactive prompt)
     project_dir = cli_project_dir or _ask_project_dir()
+    _inject_claude_settings(project_dir)
 
-    if resume_id:
+    if resume_id: 
         run_team(user_request="", resume_task_id=resume_id,
                  project_dir=project_dir)
     else:
-        request = " ".join(args) if args else input(
-            "Enter your backend task: ").strip()
+        if cli_task_file:
+            request = _task_from_file(cli_task_file)
+        elif use_task_editor:
+            request = _task_from_editor()
+        else:
+            request = " ".join(args) if args else input(
+                "Enter your backend task: ").strip()
         if not request:
             print("No task provided.")
             sys.exit(1)

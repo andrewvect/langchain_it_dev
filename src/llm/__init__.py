@@ -3,19 +3,17 @@
 from llm.copilot import (
     _COPILOT_CODE_MODEL,
     _COPILOT_FAST_MODEL,
-    _call,
-    _call_copilot,
-    _gh_token,
-    get_available_copilot_models,
+    _COPILOT_SMART_MODEL,
+    call_claude,
+    call_copilot,
 )
 from llm.factory import get_llm
 
 __all__ = [
-    "_call",
-    "_call_copilot",
-    "_gh_token",
+    "call_claude",
+    "call_copilot",
     "_COPILOT_CODE_MODEL",
     "_COPILOT_FAST_MODEL",
-    "get_available_copilot_models",
+    "_COPILOT_SMART_MODEL",
     "get_llm",
 ]

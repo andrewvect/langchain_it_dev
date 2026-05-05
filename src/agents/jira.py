@@ -1,4 +1,7 @@
-"""Jira integration: create project, epics, and story tickets."""
+"""Jira integration: create project, epics, and story tickets.
+
+Does NOT create local files — creates tickets via Jira REST API only.
+"""
 
 import json
 import re
@@ -6,7 +9,7 @@ from typing import Any
 
 import requests
 
-from llm.copilot import _COPILOT_FAST_MODEL, _call_copilot
+from llm.copilot import _COPILOT_FAST_MODEL, call_copilot
 from utils import _save_to_md
 from config import get_jira_config
 from database import diff_and_log
@@ -105,7 +108,7 @@ def jira_setup(state: TeamState) -> dict:
         return {"jira_result": "skipped (no Jira credentials)", "jira_project_key": ""}
 
     # ── Step 1: LLM decomposes the work into structured tickets ────────────
-    tickets_raw = _call_copilot(
+    tickets_raw = call_copilot(
         system=(
             "You are a Senior Engineering TeamLead. "
             "Based on the architecture document, produce a JSON list of Jira tickets. "
@@ -194,8 +197,11 @@ def jira_setup(state: TeamState) -> dict:
                     print(f"  ❌ [Jira] Task creation failed: {e2}", flush=True)
 
     jira_result = "\n".join(created_lines)
-    _save_to_md(state["task_id"], "Jira", "setup",
-                jira_result, state.get("project_dir"))
+    _save_to_md(
+        state["task_id"], "Jira", "setup", jira_result,
+        state.get("project_dir"),
+        input_content=f"Project key: {project_key}",
+    )
     diff_and_log(
         state["task_id"],
         "Jira",
